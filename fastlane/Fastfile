@@ -1,0 +1,56 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+platform :ios do
+  desc "Description of what the lane does"
+  lane :dev do
+    # add actions here: https://docs.fastlane.tools/actions
+    schemeName = "xxxx"
+    time = Time.new.strftime("%Y-%m-%d,%p%l.%M") #获取时间格式
+    version = get_version_number #获取版本号
+    ipaName = "#{schemeName}_#{version}_Adhoc_#{time}.ipa"
+    
+	puts "请输入更新说明："
+	pgy_desc = STDIN.gets
+	pgy_api = "bb288cefc195f3151870578d10062925"
+	pgy_user = "cfaa38d34b3a08fb01d0de24b4ef09a9"
+	
+    gym(
+        scheme: "#{schemeName}", #项目名称
+        export_method: "ad-hoc", #打包的类型 [app-store, ad-hoc, package, enterprise, development(默认), developer-id]
+        configuration: "Debug", #模式，默认 Release会生成dsym文件, Debug 不会
+        output_name: "#{ipaName}", #输出的包名
+        output_directory: "~/Desktop/ipas", #输出的位置
+        clean: true,
+        export_xcargs: "-allowProvisioningUpdates",
+        include_bitcode: false,
+    )
+    
+    # 上传蒲公英
+ 	#pgyer(api_key: "#{pgy_api}", user_key: "#{pgy_user}", update_description: "[fastlane]: #{pgy_desc}")
+
+  end
+
+
+  lane :test do
+    # add actions here: https://docs.fastlane.tools/actions
+    schemeName = "xxxx"
+    time = Time.new.strftime("%Y-%m-%d,%p%l.%M") #获取时间格式
+    version = get_version_number #获取版本号
+    ipaName = "#{schemeName}_#{version}_Adhoc_#{time}.ipa"
+    puts ipaName
+  end
+
+end
