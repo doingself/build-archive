@@ -4,7 +4,7 @@
 # xcodebuild -showsdks查看可用的SDK
 # xcodebuild -list查看项目全部的targets，schemes和configurations
 # chmod +x ./test.sh  #使脚本具有执行权限
-# ./test.sh  #执行脚本
+# ./test.sh #执行脚本
 
 SECONDS=0
 
@@ -32,6 +32,7 @@ function clean(){
     _start_seconds="$(date "+%s")"
 
     echo "~~~~~~~~~~~~ clean 🍺 ~~~~~~~~~~~~"
+
     # xcodebuild clean -workspace ${_workspace} -scheme ${_scheme} -configuration ${_configuration} -destination 'generic/platform=iOS' -quiet || exit
     xcodebuild clean -workspace ${_workspace} -scheme ${_scheme} -configuration ${_configuration} -destination 'generic/platform=iOS' >> ${_log_file}
 
@@ -51,10 +52,13 @@ function build(){
     _start_seconds="$(date "+%s")"
 
     echo "~~~~~~~~~~~~ build 🍺 ~~~~~~~~~~~~"
-    xcodebuild build -workspace ${_workspace} -scheme ${_scheme} -configuration ${_configuration} -destination 'generic/platform=iOS' >> ${_log_file}   
+
+    xcodebuild build -workspace ${_workspace} -scheme ${_scheme} -configuration ${_configuration} -destination 'generic/platform=iOS' >> ${_log_file}
 
     _end_seconds=`date +"%s"`
     _sum_time=$((_end_seconds-_start_seconds))
+    # _sum_time=`expr $_end_seconds - $_start_seconds`
+    # _sum_time=$[ $_end_seconds - $_start_seconds ]
 
     if (($? == 0))
     then
@@ -72,12 +76,14 @@ function archive(){
     rm -rf ${_archive_file}
 
     echo "~~~~~~~~~~~~ archive 🍺 ~~~~~~~~~~~~"
+
     xcodebuild archive -workspace ${_workspace} -scheme ${_scheme} -configuration ${_configuration} -archivePath ${_archive_file} -destination 'generic/platform=iOS' >> ${_log_file}
 
     _end_seconds=`date +"%s"`
     _sum_time=$[ $_end_seconds - $_start_seconds ]
 
-    if (($? == 0))
+    # 目录存在, 则表示成功
+    if [ -d ${_archive_file} ]
     then
         echo "~~~~~~~~~~~~ archive success ✅ (${_sum_time}) ~~~~~~~~~~~~"
     else
@@ -93,16 +99,23 @@ function exportArchive(){
     rm -rf ${_ipa_path}
 
     echo "~~~~~~~~~~~~ exportArchive 🍺 ~~~~~~~~~~~~"
-    xcodebuild -exportArchive -archivePath ${_archive_file} -exportPath ${_ipa_path} -exportOptionsPlist ${_Plist_file} >> ${_log_file}
 
-    _end_seconds=`date +"%s"`
-    _sum_time=$[ $_end_seconds - $_start_seconds ]
-
-    if (($? == 0))
+    if [ -d ${_archive_file} ]
     then
-        echo "~~~~~~~~~~~~ exportArchive success ✅ (${_sum_time}) ~~~~~~~~~~~~"
+        xcodebuild -exportArchive -archivePath ${_archive_file} -exportPath ${_ipa_path} -exportOptionsPlist ${_Plist_file} >> ${_log_file}
+
+        _end_seconds=`date +"%s"`
+        _sum_time=$[ $_end_seconds - $_start_seconds ]
+
+        # 文件存在, 则表示成功
+        if [ -e ${_ipa_file} ]
+        then
+            echo "~~~~~~~~~~~~ exportArchive success ✅ (${_sum_time}) ~~~~~~~~~~~~"
+        else
+            echo "~~~~~~~~~~~~ exportArchive faild ❌ (${_sum_time}) ~~~~~~~~~~~~"
+        fi
     else
-        echo "~~~~~~~~~~~~ exportArchive faild ❌ (${_sum_time}) ~~~~~~~~~~~~"
+        echo "~~~~~~~~~~~~ ${_archive_file} 不存在 💣 ~~~~~~~~~~~~"
     fi
 }
 
@@ -112,27 +125,27 @@ function uploadPGY(){
 
     echo "~~~~~~~~~~~~ 上传ipa到蒲公英 🍺 ~~~~~~~~~~~~"
 
-    if [ -e ${_ipa_file} ]; 
+    if [ -e ${_ipa_file} ]
     then
-    curl -F "file=@${_ipa_file}" \
-    -F "uKey=${_pgy_user}" \
-    -F "_api_key=${_pgy_api}" \
-    -F "updateDescription=${_pgy_desc}" \
-    "http://www.pgyer.com/apiv1/app/upload"
+        curl -F "file=@${_ipa_file}" \
+        -F "uKey=${_pgy_user}" \
+        -F "_api_key=${_pgy_api}" \
+        -F "updateDescription=${_pgy_desc}" \
+        "http://www.pgyer.com/apiv1/app/upload"
 
-    _end_seconds=`date +"%s"`
-    _sum_time=$[ $_end_seconds - $_start_seconds ]
+        _end_seconds=`date +"%s"`
+        _sum_time=$[ $_end_seconds - $_start_seconds ]
 
-    if (($? == 0))
-    then
-        echo "~~~~~~~~~~~~ 上传ipa到蒲公英 success ✅ (${_sum_time}) ~~~~~~~~~~~~"
-        echo "蒲公英地址: ${_pgy_url}"
+        if (($? == 0))
+        then
+            echo "~~~~~~~~~~~~ 上传ipa到蒲公英 success ✅ (${_sum_time}) ~~~~~~~~~~~~"
+            echo "蒲公英地址: ${_pgy_url}"
+        else
+            echo "~~~~~~~~~~~~ 上传ipa到蒲公英 faild ❌ (${_sum_time}) ~~~~~~~~~~~~"
+        fi
+
     else
-        echo "~~~~~~~~~~~~ 上传ipa到蒲公英 faild ❌ (${_sum_time}) ~~~~~~~~~~~~"
-    fi
-
-    else
-    echo "~~~~~~~~~~~~ ${_ipa_file} 不存在 ❌ ~~~~~~~~~~~~"
+        echo "~~~~~~~~~~~~ ${_ipa_file} 不存在 💣 ~~~~~~~~~~~~"
     fi
 }
 
@@ -148,7 +161,9 @@ function startClean(){
 # 打包 - 导出 - 上传
 function startArchive(){
     archive
-    if (($? == 0))
+
+    # 目录存在, 则表示成功
+    if [ -d ${_archive_file} ]
     then
         startExportArchive
     fi   
@@ -157,7 +172,9 @@ function startArchive(){
 # 导出 - 上传
 function startExportArchive(){
     exportArchive
-    if (($? == 0))
+
+    # 文件存在, 则表示成功
+    if [ -e ${_ipa_file} ]
     then
         uploadPGY
     fi
@@ -186,16 +203,17 @@ function main(){
     then
         while :
         do
-        echo '~~~~~~~~~~~~ 使用 xcodebuild 🚀 自动打包上传蒲公英 ~~~~~~~~~~~~'
-        echo  "📌 输入 1: 清理 + 打包 + 导出 ipa + 上传蒲公英"
-        echo  "📌 输入 2: 打包 + 导出 ipa + 上传蒲公英"
-        echo  "📌 输入 3: 导出 ipa + 上传蒲公英"
-        echo  "📌 输入 4: 上传蒲公英"
+        echo '~~~~~~~~~~~~ 使用 xcodebuild 🚀 自动打包上传蒲公英 ⏳ ~~~~~~~~~~~~'
+        echo  "📌 输入 1: 清理 🗑 + 打包 💼 + 导出 ipa 🧩 + 上传蒲公英 📎"
+        echo  "📌 输入 2: 打包 💼 + 导出 ipa 🧩 + 上传蒲公英 📎"
+        echo  "📌 输入 3: 导出 ipa 🧩 + 上传蒲公英 📎"
+        echo  "📌 输入 4: 上传蒲公英 📎"
         echo  "📌 输入 5: 清理 🗑"
         echo  "📌 输入 6: 编译 🏗"
         echo  "📌 输入 7: 打包 💼"
         echo  "📌 输入 8: 导出 ipa 🔫"
         echo  "📌 输入 0: 退出 🏃‍♂️"
+        echo  "🕹  请输入菜单序号: ✍️"
 
         read aNum
         case $aNum in
@@ -226,7 +244,7 @@ function main(){
 main
 
 # 输出总用时
-echo "执行耗时: ${SECONDS}秒"
+echo "~~~~~~~~~~~~ 执行耗时: ${SECONDS}秒 ⏰ ~~~~~~~~~~~~"
 
 exit 0
 
@@ -239,15 +257,15 @@ exit 0
 
 
 function testShell(){
-    echo "第一个参数为：$1";
-    echo "第三个参数为：${3}";
-    echo "参数个数为：$#";
-    echo "作为一个字符串输出所有参数 $* !"
-    echo "显示最后命令的退出状态(0表示没有错误)：$?";
+    echo "第一个参数为：$1 ";
+    echo "第三个参数为：${3} ";
+    echo "参数个数为：$# ";
+    echo "作为一个字符串输出所有参数 $* "
+    echo "显示最后命令的退出状态(0表示没有错误)：$? "
     
     # $0：当前Shell程序的文件名
     # dirname $0，取得当前执行的脚本文件的父目录
-    # cd `dirname $0`，进入这个目录(切换当前工作目录) 
+    # cd `dirname $0`，进入这个目录(切换当前工作目录)
     # pwd，显示当前工作目录(cd执行后的)
     _current_path=$(cd -P $(dirname $0);pwd)
 
@@ -264,7 +282,7 @@ function testShell(){
     echo "date: ${_date}"
     echo "file: ${_file}"
 
-    # chmod +x ./test.sh  #使脚本具有执行权限
+    # chmod +x ./test.sh #使脚本具有执行权限
     # ./test.sh  #执行脚本
     if [ -x ${_file} ]
     then
