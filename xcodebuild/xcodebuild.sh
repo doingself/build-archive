@@ -256,6 +256,27 @@ exit 0
 ###################################
 
 
+num=0
+str=''
+max=100
+postfix=('|' '/' '-' '\')
+while [ $num -le $max ]
+do
+    let index=num%4
+    shellwidth=`stty size | awk '{print $2}'`
+    shellwidthstr="%-"$shellwidth"s\n"
+    fmt_str="now "$num" shell tty width "$shellwidth
+    printf "$shellwidthstr" "$fmt_str"
+    printf "loading: [%-50s %-2d%% %c]\r" "$str" "$num" "${postfix[$index]}"
+    let num++
+    sleep 0.1
+    if (($num % 2 == 0)); then
+        str+='#'
+    fi
+done
+printf "\n"
+
+
 function testShell(){
     echo "第一个参数为：$1 ";
     echo "第三个参数为：${3} ";
