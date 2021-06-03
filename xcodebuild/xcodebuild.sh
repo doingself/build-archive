@@ -102,7 +102,7 @@ function exportArchive(){
 
     if [ -d ${_archive_file} ]
     then
-        xcodebuild -exportArchive -archivePath ${_archive_file} -exportPath ${_ipa_path} -exportOptionsPlist ${_Plist_file} >> ${_log_file}
+        xcodebuild -exportArchive -archivePath ${_archive_file} -exportPath ${_ipa_path} -exportOptionsPlist ${_Plist_file} -allowProvisioningUpdates >> ${_log_file}
 
         _end_seconds=`date +"%s"`
         _sum_time=$[ $_end_seconds - $_start_seconds ]
